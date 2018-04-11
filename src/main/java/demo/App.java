@@ -4,10 +4,12 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.search.MeterNotFoundException;
 import io.micrometer.core.instrument.search.RequiredSearch;
+import io.micrometer.spring.autoconfigure.MeterRegistryCustomizer;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +29,11 @@ public class App {
 
     public static void main(String[] args) {
         SpringApplication.run(App.class, args);
+    }
+
+    @Bean
+    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+        return registry -> registry.config().commonTags("region", "local");
     }
 }
 
@@ -56,6 +63,7 @@ class NotCalledController {
     private static final String HTTP_SERVER_REQUESTS_METRIC_NAME = "http.server.requests";
     private static final String URI_TAG = "uri";
 
+    // we're only interested in custom handler mappings not built-in ones.
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
 
     private final MeterRegistry meterRegistry;
