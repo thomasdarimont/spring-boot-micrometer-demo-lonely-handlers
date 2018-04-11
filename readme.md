@@ -14,7 +14,7 @@ The `NotCalledController` determines custom handler mappings from the `requestMa
 For each handler we check if the controller method was used by trying to find an associated `http.server.requests` metric.
 If such a metric was found, we know that the method was used at least once and can continue the search, otherwise it is returned as a dormant handler. 
 
-See: `NotCalledController.java`
+See [NotCalledController.java](docs/CONTRIBUTING.md)
 
 # Example
 
