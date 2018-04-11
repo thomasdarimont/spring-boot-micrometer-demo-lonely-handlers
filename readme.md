@@ -66,8 +66,7 @@ The first call to `/notcalled` will yield
 ]
 ```
 
-After calling `/op1` we get the following response from `/notcalled`. Note that the pattern '/op1' and '/notcalled' itself
-are now gone since they were just called.
+After calling `/op1` we get the following response from `/notcalled`.
 ```json
 [
 {
@@ -88,3 +87,4 @@ are now gone since they were just called.
 }
 ]
 ```
+Note that the pattern '/op1' and '/notcalled' itself are now gone since they were just called.
