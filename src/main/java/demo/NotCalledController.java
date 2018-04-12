@@ -13,8 +13,6 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,41 +28,65 @@ class NotCalledController {
     private static final String HTTP_SERVER_REQUESTS_METRIC_NAME = "http.server.requests";
     private static final String URI_TAG = "uri";
 
-    // we're only interested in custom handler mappings not built-in ones.
+    // we're only interested in custom @RestMapping handler mappings not built-in ones.
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
 
     private final MeterRegistry meterRegistry;
 
     @GetMapping
     Object findNotCalledHandlers() {
-        return requestMappingHandlerMapping.getHandlerMethods().entrySet().stream() //
-                .flatMap(this::toDormantHandlerMappingsIfPresent) //
+        return requestMappingEntries() //
+                .flatMap(this::toDormantHandlerMappings) //
                 .collect(Collectors.toList());
     }
 
-    private Stream<DormantHandlerMapping> toDormantHandlerMappingsIfPresent(Map.Entry<RequestMappingInfo, HandlerMethod> entry) {
+    private Stream<Map.Entry<RequestMappingInfo, HandlerMethod>> requestMappingEntries() {
+        return requestMappingHandlerMapping.getHandlerMethods().entrySet().stream();
+    }
 
-        List<DormantHandlerMapping> results = new ArrayList<>();
+    private Stream<DormantHandlerMapping> toDormantHandlerMappings(Map.Entry<RequestMappingInfo, HandlerMethod> entry) {
 
-        for (String pattern : entry.getKey().getPatternsCondition().getPatterns()) {
-            RequiredSearch search = meterRegistry.get(HTTP_SERVER_REQUESTS_METRIC_NAME).tag(URI_TAG, pattern);
+        RequestMappingInfo requestMapping = entry.getKey();
+        HandlerMethod handlerMethod = entry.getValue();
 
-            try {
-                Timer counter = search.timer();
-                if (counter.count() > 0) {
-                    continue;
-                }
-            } catch (MeterNotFoundException ignore) {
+        return dormantSearchPatterns(requestMapping) //
+                .map(s -> new DormantHandlerMapping(s.getPattern(), handlerMethod.getMethod().toString()));
+    }
+
+    private Stream<SearchPattern> dormantSearchPatterns(RequestMappingInfo requestMapping) {
+        return createSearchPatternsFromRequestMapping(requestMapping) //
+                .filter(this::hasEmptyTimerCount);
+    }
+
+    private Stream<SearchPattern> createSearchPatternsFromRequestMapping(RequestMappingInfo requestMapping) {
+        return requestMapping.getPatternsCondition().getPatterns().stream() //
+                .map(SearchPattern::new);
+    }
+
+    private boolean hasEmptyTimerCount(SearchPattern searchPattern) {
+
+        RequiredSearch search = searchPattern.toSearch();
+        try {
+            Timer counter = search.timer();
+            if (counter.count() > 0) {
+                return false;
             }
-
-            results.add(new DormantHandlerMapping(pattern, entry.getValue().getMethod().toString()));
+        } catch (MeterNotFoundException ignored) {
         }
-
-        return results.stream();
+        return true;
     }
 
     @Value
-    static class DormantHandlerMapping {
+    private class SearchPattern {
+        private final String pattern;
+
+        RequiredSearch toSearch() {
+            return meterRegistry.get(HTTP_SERVER_REQUESTS_METRIC_NAME).tag(URI_TAG, pattern);
+        }
+    }
+
+    @Value
+    private static class DormantHandlerMapping {
         private final String pattern;
         private final String method;
     }
