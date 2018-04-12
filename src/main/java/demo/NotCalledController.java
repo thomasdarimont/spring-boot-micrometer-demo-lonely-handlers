@@ -34,7 +34,7 @@ class NotCalledController {
     private final MeterRegistry meterRegistry;
 
     @GetMapping
-    Object findNotCalledHandlers() {
+    Object findNotCalledRequestHandlerMappings() {
         return requestMappingEntries() //
                 .flatMap(this::toDormantHandlerMappings) //
                 .collect(Collectors.toList());
